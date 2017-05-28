@@ -99,7 +99,16 @@ object Anagrams {
    *  Note: the resulting value is an occurrence - meaning it is sorted
    *  and has no zero-entries.
    */
-  def subtract(x: Occurrences, y: Occurrences): Occurrences = x diff y
+  def subtract(x: Occurrences, y: Occurrences): Occurrences = {
+    def iter(x: Occurrences, y: Occurrences, acc: Occurrences): Occurrences = (x, y) match {
+      case (x, Nil) => acc ::: x
+      case (Nil, y) => acc ::: y
+      case (xx :: xs, yy :: ys) =>
+        if (xx._1 < yy._1) iter(xs, y, acc :+ xx)
+        else iter(xs, ys, acc :+ (xx._1, xx._2 - yy._2))
+    }
+    iter(x, y, List()).filter(_._2 != 0)
+  }
 
   /** Returns a list of all anagram sentences of the given sentence.
    *
@@ -142,14 +151,14 @@ object Anagrams {
    *  Note: There is only one anagram of an empty sentence.
    */
   def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
-    def sentenceAnagrams0(occs: Occurrences): List[Sentence] =
-      if (occs.isEmpty) List(List())
+    def rec(occs: Occurrences): List[Sentence] = {
+      if (occs.isEmpty) List(Nil)
       else for {
         comb <- combinations(occs)
-        word <- (dictionaryByOccurrences withDefaultValue List()) (comb)
-        restSentence <- sentenceAnagrams0(subtract(occs, comb))
-      } yield word :: restSentence
-
-    sentenceAnagrams0(sentenceOccurrences(sentence))
+        word <- dictionaryByOccurrences.getOrElse(comb, Nil)
+        sent <- rec(subtract(occs, wordOccurrences(word)))
+      } yield word :: sent
+    }
+    rec(sentenceOccurrences(sentence))
   }
 }
